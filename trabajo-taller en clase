@@ -1,0 +1,379 @@
+# ============================================================
+# Universidad de Cundinamarca - Estructuras de Información
+# Taller: Listas Circulares
+# Estudiante: Stefania Murcia Castro
+# Tema: Sistema de turnos para torneo de videojuegos
+# ============================================================
+
+# ──────────────────────────────────────────────────────────
+# CLASES BASE: Nodo y ListaCircular
+# ──────────────────────────────────────────────────────────
+
+class Nodo:
+    """Nodo de la lista circular. Almacena un jugador."""
+    def __init__(self, dato):
+        self.dato = dato   # dato es un diccionario con info del jugador
+        self.sig = None
+
+
+class ListaCircular:
+    """Lista circular simplemente enlazada para gestionar jugadores."""
+
+    def __init__(self):
+        self.cabeza = None
+        self.total_nodos = 0
+
+    # ── Insertar al final ──────────────────────────────────
+    def insertar(self, dato):
+        nuevo = Nodo(dato)
+        if self.cabeza is None:
+            self.cabeza = nuevo
+            nuevo.sig = self.cabeza
+        else:
+            temp = self.cabeza
+            while temp.sig != self.cabeza:
+                temp = temp.sig
+            temp.sig = nuevo
+            nuevo.sig = self.cabeza
+        self.total_nodos += 1
+
+    # ── Mostrar todos los jugadores ────────────────────────
+    def mostrar(self):
+        if not self.cabeza:
+            print("  (Lista vacía)")
+            return
+        temp = self.cabeza
+        print(f"  {'Nombre':<15} {'Estado':<10} {'Turnos'}")
+        print("  " + "-" * 35)
+        while True:
+            j = temp.dato
+            estado = "Activo" if j["activo"] else "Pausado"
+            print(f"  {j['nombre']:<15} {estado:<10} {j['turnos']}")
+            temp = temp.sig
+            if temp == self.cabeza:
+                break
+
+    # ── Buscar jugador por nombre ──────────────────────────
+    def buscar(self, nombre):
+        if not self.cabeza:
+            return None
+        temp = self.cabeza
+        while True:
+            if temp.dato["nombre"].lower() == nombre.lower():
+                return temp
+            temp = temp.sig
+            if temp == self.cabeza:
+                break
+        return None
+
+    # ── Eliminar jugador ───────────────────────────────────
+    def eliminar(self, nombre):
+        if not self.cabeza:
+            print("  Lista vacía, no hay jugadores que eliminar.")
+            return False
+
+        # Caso: un solo nodo
+        if self.cabeza.sig == self.cabeza:
+            if self.cabeza.dato["nombre"].lower() == nombre.lower():
+                self.cabeza = None
+                self.total_nodos -= 1
+                return True
+            return False
+
+        # Buscar el nodo y su anterior
+        prev = None
+        temp = self.cabeza
+        while True:
+            if temp.dato["nombre"].lower() == nombre.lower():
+                break
+            prev = temp
+            temp = temp.sig
+            if temp == self.cabeza:
+                return False   # No encontrado
+
+        # Eliminar la cabeza
+        if temp == self.cabeza:
+            # Ir al último para actualizar su .sig
+            ultimo = self.cabeza
+            while ultimo.sig != self.cabeza:
+                ultimo = ultimo.sig
+            self.cabeza = self.cabeza.sig
+            ultimo.sig = self.cabeza
+        else:
+            prev.sig = temp.sig
+
+        self.total_nodos -= 1
+        return True
+
+    # ── Pausar / reactivar ─────────────────────────────────
+    def cambiar_estado(self, nombre, pausar=True):
+        nodo = self.buscar(nombre)
+        if nodo:
+            nodo.dato["activo"] = not pausar
+            return True
+        return False
+
+    # ── Contar activos / pausados ──────────────────────────
+    def contar_activos(self):
+        if not self.cabeza:
+            return 0
+        cuenta = 0
+        temp = self.cabeza
+        while True:
+            if temp.dato["activo"]:
+                cuenta += 1
+            temp = temp.sig
+            if temp == self.cabeza:
+                break
+        return cuenta
+
+    # ── Jugador con más turnos ─────────────────────────────
+    def jugador_mas_turnos(self):
+        if not self.cabeza:
+            return None
+        temp = self.cabeza
+        lider = temp.dato
+        while True:
+            if temp.dato["turnos"] > lider["turnos"]:
+                lider = temp.dato
+            temp = temp.sig
+            if temp == self.cabeza:
+                break
+        return lider
+
+    # ── Verificar si queda solo un activo ──────────────────
+    def unico_activo(self):
+        activos = []
+        if not self.cabeza:
+            return None
+        temp = self.cabeza
+        while True:
+            if temp.dato["activo"]:
+                activos.append(temp.dato)
+            temp = temp.sig
+            if temp == self.cabeza:
+                break
+        return activos[0] if len(activos) == 1 else None
+
+
+# ──────────────────────────────────────────────────────────
+# FUNCIONES DE MENÚ Y LÓGICA DEL TORNEO
+# ──────────────────────────────────────────────────────────
+
+def separador(titulo=""):
+    ancho = 45
+    if titulo:
+        print("\n" + "=" * ancho)
+        print(f"  {titulo}")
+        print("=" * ancho)
+    else:
+        print("-" * ancho)
+
+
+def crear_jugador(nombre):
+    return {"nombre": nombre, "activo": True, "turnos": 0}
+
+
+def registrar_jugadores(lista):
+    separador("1. REGISTRO DE JUGADORES")
+    print("  Ingrese mínimo 6 jugadores.")
+    print("  Escriba 'listo' cuando termine (después del mínimo).\n")
+
+    while True:
+        nombre = input(f"  Jugador #{lista.total_nodos + 1}: ").strip()
+
+        if nombre.lower() == "listo":
+            if lista.total_nodos < 6:
+                faltantes = 6 - lista.total_nodos
+                print(f"  ⚠ Faltan {faltantes} jugador(es). Debe registrar al menos 6.")
+            else:
+                print(f"\n  ✔ Registro completado con {lista.total_nodos} jugadores.")
+                break
+        elif nombre == "":
+            print("  ⚠ El nombre no puede estar vacío.")
+        elif lista.buscar(nombre):
+            print(f"  ⚠ '{nombre}' ya está registrado. Use un nombre diferente.")
+        else:
+            lista.insertar(crear_jugador(nombre))
+            print(f"  ✔ {nombre} registrado.")
+            if lista.total_nodos == 6:
+                print("  (Mínimo alcanzado. Puede seguir agregando o escribir 'listo')")
+
+
+def mostrar_jugadores(lista):
+    separador("2. JUGADORES REGISTRADOS")
+    lista.mostrar()
+
+
+def buscar_jugador(lista):
+    separador("3. BUSCAR JUGADOR")
+    nombre = input("  Ingrese el nombre a buscar: ").strip()
+    nodo = lista.buscar(nombre)
+    if nodo:
+        j = nodo.dato
+        estado = "Activo" if j["activo"] else "Pausado"
+        print(f"  ✔ Jugador encontrado: {j['nombre']} | Estado: {estado} | Turnos: {j['turnos']}")
+    else:
+        print(f"  ✘ Jugador no encontrado: '{nombre}'")
+
+
+def eliminar_jugador(lista):
+    separador("4. ELIMINAR JUGADOR")
+    nombre = input("  Ingrese el nombre a eliminar: ").strip()
+    if lista.eliminar(nombre):
+        print(f"  ✔ '{nombre}' eliminado correctamente.")
+        print("\n  Lista actualizada:")
+        lista.mostrar()
+    else:
+        print(f"  ✘ No se encontró '{nombre}' en la lista.")
+
+
+def pausar_reactivar(lista):
+    separador("5. PAUSAR / REACTIVAR JUGADOR")
+    nombre = input("  Nombre del jugador: ").strip()
+    nodo = lista.buscar(nombre)
+    if not nodo:
+        print(f"  ✘ Jugador '{nombre}' no encontrado.")
+        return
+    estado_actual = "Activo" if nodo.dato["activo"] else "Pausado"
+    print(f"  Estado actual de {nombre}: {estado_actual}")
+    accion = input("  ¿Pausar (p) o Reactivar (r)? ").strip().lower()
+    if accion == "p":
+        lista.cambiar_estado(nombre, pausar=True)
+        print(f"  ✔ {nombre} pausado.")
+    elif accion == "r":
+        lista.cambiar_estado(nombre, pausar=False)
+        print(f"  ✔ {nombre} reactivado.")
+    else:
+        print("  Opción no válida.")
+
+
+def simular_turnos(lista, num_turnos=10):
+    separador("6. SIMULACIÓN DE TURNOS AUTOMÁTICOS")
+    if lista.contar_activos() == 0:
+        print("  No hay jugadores activos para simular.")
+        return
+
+    print(f"  Simulando {num_turnos} turnos...\n")
+
+    # Puntero circular: empieza en cabeza
+    actual = lista.cabeza
+    turnos_realizados = 0
+
+    while turnos_realizados < num_turnos:
+        # Verificar ganador antes de cada turno
+        ganador = lista.unico_activo()
+        if ganador:
+            print(f"\n  ¡Solo queda un jugador activo!")
+            break
+
+        # Saltar jugadores pausados
+        if not actual.dato["activo"]:
+            actual = actual.sig
+            continue
+
+        actual.dato["turnos"] += 1
+        turnos_realizados += 1
+        print(f"  Turno {turnos_realizados:>3}: 🎮 {actual.dato['nombre']} "
+              f"(turno #{actual.dato['turnos']})")
+        actual = actual.sig
+
+    print(f"\n  Total de turnos simulados: {turnos_realizados}")
+
+
+def mostrar_estadisticas(lista):
+    separador("7. ESTADÍSTICAS DEL TORNEO")
+    total = lista.total_nodos
+    activos = lista.contar_activos()
+    pausados = total - activos
+    lider = lista.jugador_mas_turnos()
+
+    print(f"  Total de jugadores  : {total}")
+    print(f"  Jugadores activos   : {activos}")
+    print(f"  Jugadores pausados  : {pausados}")
+    if lider:
+        print(f"  Jugador con más turnos: {lider['nombre']} ({lider['turnos']} turnos)")
+    else:
+        print("  Sin datos de turnos aún.")
+
+
+def detectar_ganador(lista):
+    separador("8. GANADOR FINAL")
+    ganador = lista.unico_activo()
+    if ganador:
+        print()
+        print("  ╔══════════════════════════════════════╗")
+        print("  ║      🏆 GANADOR DEL TORNEO 🏆        ║")
+        print(f"  ║        {ganador['nombre']:^30}  ║")
+        print(f"  ║     Turnos jugados: {ganador['turnos']:<17}║")
+        print("  ╚══════════════════════════════════════╝")
+    else:
+        activos = lista.contar_activos()
+        if activos == 0:
+            print("  No quedan jugadores activos.")
+        else:
+            print(f"  Aún hay {activos} jugadores activos. El torneo continúa.")
+
+
+# ──────────────────────────────────────────────────────────
+# MENÚ PRINCIPAL
+# ──────────────────────────────────────────────────────────
+
+def menu():
+    lista = ListaCircular()
+
+    print()
+    print("╔══════════════════════════════════════════════╗")
+    print("║   SISTEMA DE TORNEO DE VIDEOJUEGOS           ║")
+    print("║   Estructuras de Información - U. Cundinam.  ║")
+    print("╚══════════════════════════════════════════════╝")
+
+    while True:
+        separador("MENÚ PRINCIPAL")
+        print("  1. Registrar jugadores")
+        print("  2. Mostrar jugadores")
+        print("  3. Buscar jugador")
+        print("  4. Eliminar jugador")
+        print("  5. Pausar / Reactivar jugador")
+        print("  6. Simular turnos automáticos")
+        print("  7. Mostrar estadísticas")
+        print("  8. Detectar ganador final")
+        print("  0. Salir")
+        separador()
+
+        opcion = input("  Seleccione una opción: ").strip()
+
+        if opcion == "1":
+            registrar_jugadores(lista)
+        elif opcion == "2":
+            mostrar_jugadores(lista)
+        elif opcion == "3":
+            buscar_jugador(lista)
+        elif opcion == "4":
+            eliminar_jugador(lista)
+        elif opcion == "5":
+            pausar_reactivar(lista)
+        elif opcion == "6":
+            try:
+                n = int(input("  ¿Cuántos turnos simular? (mín. 10): "))
+                n = max(n, 10)
+            except ValueError:
+                n = 10
+            simular_turnos(lista, n)
+        elif opcion == "7":
+            mostrar_estadisticas(lista)
+        elif opcion == "8":
+            detectar_ganador(lista)
+        elif opcion == "0":
+            print("\n  Hasta luego. ¡Fin del torneo!\n")
+            break
+        else:
+            print("  Opción no válida. Intente de nuevo.")
+
+
+# ──────────────────────────────────────────────────────────
+# PUNTO DE ENTRADA
+# ──────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    menu()
